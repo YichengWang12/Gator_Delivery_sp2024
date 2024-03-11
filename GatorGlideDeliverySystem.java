@@ -18,6 +18,9 @@ class Order {
         this.priority = calculatePriority(orderValue, currentSystemTime);
         this.eta = 0;
     }
+    public Order(){
+
+    }
 
     private double calculatePriority(int orderValue, int currentSystemTime) {
         double normalizedOrderValue = (double) orderValue / 50;
@@ -46,10 +49,34 @@ class AVLTreeManager<T> {
     private AVLNode<T> root;
     private Comparator<T> comparator;
 
+    private Order preOrder; // use this to update eta
+
+
+    //use reverse inorder traversal to find the predecessor order and use it to update the current node
+    public void updateEtaReverseInorder(AVLNode<Order> node){
+        if(node != null){
+            updateEtaReverseInorder(node.right);
+            if(node.right != null){
+                node.data.eta = preOrder.eta + preOrder.deliveryTime + node.data.deliveryTime;
+            }
+            preOrder = node.data;
+            updateEtaReverseInorder(node.left);
+        }
+
+    }
+    public void updateEta() {
+        updateEtaReverseInorder((AVLNode<Order>) root);
+        preOrder = new Order(); // 重置以便下次更新
+    }
+
 
     public AVLTreeManager(Comparator<T> comparator) {
         this.root = null;
         this.comparator = comparator;
+    }
+
+    public AVLNode<T> getRoot() {
+        return root;
     }
 
     public void insertOrder(T data) {
@@ -309,17 +336,45 @@ public class GatorGlideDeliverySystem {
     public void createOrder(int order_id, int current_system_time, int orderValue, int deliveryTime){
         Order newOrder = new Order(order_id, current_system_time, orderValue, deliveryTime);
         priorityTreeManager.insertOrder(newOrder);
-        Order successor = (Order) priorityTreeManager.findNodeWithHigherPriority(newOrder);
-        if(successor != null){
-            newOrder.eta = successor.eta + deliveryTime;
+        Order pre = (Order) priorityTreeManager.findNodeWithHigherPriority(newOrder);
+        if(pre != null){
+            newOrder.eta = pre.eta + pre.deliveryTime + deliveryTime;
         } else {
             newOrder.eta = current_system_time + deliveryTime;
         }
         etaTreeManager.insertOrder(newOrder);
         System.out.println("Order " + order_id + " has been created - ETA: " + newOrder.eta);
+
     }
 
+    // test method
+    public static AVLNode<Order> inOrderTraversal(AVLNode<Order> node){
+        if(node == null){
+            return null;
+        }
+        inOrderTraversal(node.left);
+        System.out.println(node.data.orderId + " " + node.data.priority + " " + node.data.eta);
+        inOrderTraversal(node.right);
+        return node;
+    }
+
+
+
+
+
     // ... 其他方法 ...
+    public static void main(String[] args) {
+        GatorGlideDeliverySystem system = new GatorGlideDeliverySystem();
+        system.createOrder(1001, 1, 100, 4);
+        system.createOrder(1002, 2, 150, 7);
+        system.createOrder(1003, 8, 50, 2);
+        inOrderTraversal(system.priorityTreeManager.getRoot());
+        //inOrderTraversal(system.etaTreeManager.getRoot());
+        //system.priorityTreeManager.updateEta();
+        system.createOrder(1004,9,300,12);
+        system.priorityTreeManager.updateEta();
+        inOrderTraversal(system.priorityTreeManager.getRoot());
+    }
 }
 
 
